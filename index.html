@@ -140,8 +140,8 @@
             color: white;
         }
         
-        .choice-btn.gray {
-            background: #64748b;
+        .choice-btn.orange {
+            background: #f59e0b;
             color: white;
         }
         
@@ -357,6 +357,13 @@
         .answer-list strong {
             color: #1e293b;
         }
+        
+        .sentiment-choice {
+            text-align: center;
+            margin: 20px 0;
+            font-style: italic;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
@@ -367,13 +374,28 @@
     </div>
 
     <script>
+        // Engagement tracking
+        let engagementData = {
+            path: [],
+            startTime: Date.now()
+        };
+        
+        function track(action, detail = {}) {
+            engagementData.path.push({
+                action,
+                detail,
+                timestamp: Date.now() - engagementData.startTime
+            });
+            console.log('📊 User Engagement:', action, detail);
+        }
+
         // Content data
         const contentData = {
             initial: {
                 title: "",
                 content: `
                     <div class="intro">
-                        <p>You said: <strong>Yes</strong>. Thank you for sharing your answer. That's a choice that many people share.</p>
+                        <p><strong>You said: Yes</strong>. Thank you for sharing your answer. That's a choice that many people share.</p>
                     </div>
                     
                     <div class="survey-viz">
@@ -398,22 +420,28 @@
                         </div>
                     </div>
                     
+                    <div class="sentiment-choice">
+                        What would you like to explore next?
+                    </div>
+                    
                     <div class="choice-buttons">
-                        <button class="choice-btn purple" id="continue-btn">
-                            Common Reasons For Living Forever
+                        <button class="choice-btn purple" id="agree-btn">
+                            Click to see what others who agree with you have to say
                         </button>
-                      
+                        <button class="choice-btn orange" id="challenge-btn">
+                            Click to see why you may be wrong
+                        </button>
                     </div>
                 `
             },
             reasonsFor: {
-                title: "Common Reasons For Living Forever",
+                title: "What Others Who Agree With You Say",
                 content: `
                     <button class="back-btn" id="back-btn">
                         ← Back
                     </button>
                     
-                    <p>Let's explore some of the most common reasons people give for wanting to live forever:</p>
+                    <p>Here are the most common reasons people give for wanting to live forever:</p>
                     
                     <div class="reasons-section">
                         <div class="reason-card">
@@ -443,15 +471,15 @@
                     </div>
                     
                     <div class="choice-buttons">
-                        <button class="choice-btn blue" id="continue-btn">
-                            Common Reasons Against Living Forever
+                        <button class="choice-btn orange" id="continue-btn">
+                            Now explore the other side
                         </button>
-                      
+                       
                     </div>
                 `
             },
             reasonsAgainst: {
-                title: "Common Reasons Against Living Forever",
+                title: "Why You May Be Wrong",
                 content: `
                     <button class="back-btn" id="back-btn">
                         ← Back
@@ -495,7 +523,7 @@
                         <button class="choice-btn purple" id="continue-btn">
                             Reflect on Your Choice
                         </button>
-                     
+                
                     </div>
                 `
             },
@@ -534,7 +562,9 @@
                         <button class="choice-btn blue" id="continue-btn">
                             Continue Exploring
                         </button>
-                       
+                        <button class="choice-btn purple" id="full-answer-btn">
+                            See Complete Answer
+                        </button>
                     </div>
                 `
             },
@@ -614,6 +644,7 @@
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
             loadStep('initial');
+            track('page_loaded');
             
             // Animate survey bars after a short delay
             setTimeout(() => {
@@ -639,6 +670,23 @@
                 
                 contentArea.classList.remove('page-transition');
                 
+                // Add event listeners for sentiment buttons
+                const agreeBtn = document.getElementById('agree-btn');
+                if (agreeBtn) {
+                    agreeBtn.addEventListener('click', () => {
+                        track('chose_agree_perspective');
+                        loadStep('reasonsFor');
+                    });
+                }
+                
+                const challengeBtn = document.getElementById('challenge-btn');
+                if (challengeBtn) {
+                    challengeBtn.addEventListener('click', () => {
+                        track('chose_challenge_perspective');
+                        loadStep('reasonsAgainst');
+                    });
+                }
+                
                 // Add event listeners for continue buttons
                 const continueBtn = document.getElementById('continue-btn');
                 if (continueBtn) {
@@ -649,6 +697,7 @@
                 const fullAnswerBtn = document.getElementById('full-answer-btn');
                 if (fullAnswerBtn) {
                     fullAnswerBtn.addEventListener('click', () => {
+                        track('viewed_full_answer');
                         loadStep('fullAnswer');
                     });
                 }
@@ -663,6 +712,7 @@
                 const restartBtn = document.getElementById('restart-btn');
                 if (restartBtn) {
                     restartBtn.addEventListener('click', () => {
+                        track('restarted_exploration');
                         loadStep('initial');
                     });
                 }
@@ -670,6 +720,7 @@
                 // Add event listeners for followup buttons
                 document.querySelectorAll('.followup-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
+                        track('selected_followup_question', { question: this.textContent });
                         document.querySelector('.chat-input input').value = this.textContent;
                     });
                 });
@@ -680,11 +731,9 @@
         function nextStep() {
             const currentTitle = document.querySelector('h1')?.textContent || '';
             
-            if (!currentTitle) {
-                loadStep('reasonsFor');
-            } else if (currentTitle.includes("Common Reasons For")) {
+            if (currentTitle.includes("What Others Who Agree With You Say")) {
                 loadStep('reasonsAgainst');
-            } else if (currentTitle.includes("Common Reasons Against")) {
+            } else if (currentTitle.includes("Why You May Be Wrong")) {
                 loadStep('reflection');
             } else if (currentTitle.includes("Reflecting on Your Choice")) {
                 loadStep('fullAnswer');
@@ -695,14 +744,14 @@
         function previousStep() {
             const currentTitle = document.querySelector('h1')?.textContent || '';
             
-            if (currentTitle.includes("Common Reasons For")) {
+            if (currentTitle.includes("What Others Who Agree With You Say")) {
                 loadStep('initial');
-            } else if (currentTitle.includes("Common Reasons Against")) {
-                loadStep('reasonsFor');
+            } else if (currentTitle.includes("Why You May Be Wrong")) {
+                loadStep('initial');
             } else if (currentTitle.includes("Reflecting on Your Choice")) {
                 loadStep('reasonsAgainst');
             } else if (currentTitle.includes("Complete Perspective")) {
-                loadStep('initial');
+                loadStep('reflection');
             }
         }
     </script>
