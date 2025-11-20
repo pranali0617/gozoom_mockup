@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Living Forever Exploration</title>
-<style>
+    <style>
         * {
             margin: 0;
             padding: 0;
@@ -529,6 +529,10 @@
     </div>
 
     <script>
+        // Navigation history to handle back button properly
+        let navigationHistory = ['initial'];
+        let currentStep = 'initial';
+
         // Engagement tracking
         let engagementData = {
             path: [],
@@ -846,6 +850,12 @@
             const contentArea = document.getElementById('content-area');
             const data = contentData[step];
 
+            // Update navigation history
+            if (step !== currentStep) {
+                navigationHistory.push(step);
+                currentStep = step;
+            }
+
             // Add transition effect
             contentArea.classList.add('page-transition');
 
@@ -857,127 +867,95 @@
 
                 contentArea.classList.remove('page-transition');
 
-                // Add event listeners for sentiment buttons
-                const agreeBtn = document.getElementById('agree-btn');
-                if (agreeBtn) {
-                    agreeBtn.addEventListener('click', () => {
-                        track('chose_agree_perspective');
-                        loadStep('reasonsFor');
-                    });
-                }
-
-                const challengeBtn = document.getElementById('challenge-btn');
-                if (challengeBtn) {
-                    challengeBtn.addEventListener('click', () => {
-                        track('chose_challenge_perspective');
-                        loadStep('reasonsAgainstWithOptions');
-                    });
-                }
-
-                // Add event listeners for continue buttons
-                const continueBtn = document.getElementById('continue-btn');
-                if (continueBtn) {
-                    continueBtn.addEventListener('click', nextStep);
-                }
-
-                // Add event listener for full answer button
-                const fullAnswerBtn = document.getElementById('full-answer-btn');
-                if (fullAnswerBtn) {
-                    fullAnswerBtn.addEventListener('click', () => {
-                        track('viewed_full_answer');
-                        // Redirect to external URL instead of showing full answer
-                        window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?answer=yes&utm_content=answer_yes&scrollToMessage=3';
-                    });
-                }
-
-                // Add event listener for back button
-                const backBtn = document.getElementById('back-btn');
-                if (backBtn) {
-                    backBtn.addEventListener('click', previousStep);
-                }
-
-                // Add event listener for restart button
-                const restartBtn = document.getElementById('restart-btn');
-                if (restartBtn) {
-                    restartBtn.addEventListener('click', () => {
-                        track('restarted_exploration');
-                        loadStep('initial');
-                    });
-                }
-
-                // Add event listeners for followup buttons
-                document.querySelectorAll('.followup-btn').forEach(btn => {
-                    btn.addEventListener('click', function () {
-                        track('selected_followup_question', { question: this.textContent });
-                        const inputField = document.getElementById('chat-input-field');
-                        if (inputField) {
-                            inputField.value = this.textContent;
-                        }
-                    });
-                });
-
-                // Add event listener for chat submit button
-                const chatSubmitBtn = document.getElementById('chat-submit-btn');
-                const chatInputField = document.getElementById('chat-input-field');
-
-                if (chatSubmitBtn && chatInputField) {
-                    chatSubmitBtn.addEventListener('click', function () {
-                        const question = chatInputField.value.trim();
-                        if (question) {
-                            track('asked_question', { question });
-                            // Store the question in localStorage to pass to the next page
-                            localStorage.setItem('gozQuestion', question);
-                            // Redirect to Goz with the question
-                            window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?question=' + encodeURIComponent(question);
-                        }
-                    });
-
-                    // Also allow Enter key to submit (but not in textarea)
-                    chatInputField.addEventListener('keydown', function (e) {
-                        if (e.key === 'Enter' && e.ctrlKey) {
-                            e.preventDefault();
-                            const question = chatInputField.value.trim();
-                            if (question) {
-                                track('asked_question', { question });
-                                // Store the question in localStorage to pass to the next page
-                                localStorage.setItem('gozQuestion', question);
-                                // Redirect to Goz with the question
-                                window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?question=' + encodeURIComponent(question);
-                            }
-                        }
-                    });
-                }
+                // Set up event listeners
+                setupEventListeners(step);
             }, 300);
         }
 
-        // Move to the next step
-        function nextStep() {
-            const currentTitle = document.querySelector('h1')?.textContent || '';
+        function setupEventListeners(step) {
+            // Main exploration paths
+            const agreeBtn = document.getElementById('agree-btn');
+            if (agreeBtn) {
+                agreeBtn.addEventListener('click', () => {
+                    track('chose_agree_perspective');
+                    loadStep('reasonsFor');
+                });
+            }
 
-            if (currentTitle.includes("What Others Who Agree With You Say")) {
-                loadStep('reasonsAgainst');
-            } else if (currentTitle.includes("Why You May Be Wrong")) {
-                loadStep('reasonsAgainst');
-            } else if (currentTitle.includes("Reflecting on Your Choice")) {
-                // Redirect to external URL instead of showing full answer
-                window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?answer=yes&utm_content=answer_yes&scrollToMessage=3';
+            const challengeBtn = document.getElementById('challenge-btn');
+            if (challengeBtn) {
+                challengeBtn.addEventListener('click', () => {
+                    track('chose_challenge_perspective');
+                    loadStep('reasonsAgainstWithOptions');
+                });
+            }
+
+            // Continue buttons
+            const continueBtn = document.getElementById('continue-btn');
+            if (continueBtn) {
+                continueBtn.addEventListener('click', () => {
+                    track('continued_to_goz');
+                    loadStep('reasonsAgainst');
+                });
+            }
+
+            // Full answer button - redirects to external link
+            const fullAnswerBtn = document.getElementById('full-answer-btn');
+            if (fullAnswerBtn) {
+                fullAnswerBtn.addEventListener('click', () => {
+                    track('redirected_to_external_link');
+                    window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?answer=yes&utm_content=answer_yes&scrollToMessage=3';
+                });
+            }
+
+            // Back button
+            const backBtn = document.getElementById('back-btn');
+            if (backBtn) {
+                backBtn.addEventListener('click', goBack);
+            }
+
+            // Restart button
+            const restartBtn = document.getElementById('restart-btn');
+            if (restartBtn) {
+                restartBtn.addEventListener('click', () => {
+                    track('restarted_exploration');
+                    navigationHistory = ['initial'];
+                    loadStep('initial');
+                });
+            }
+
+            // Follow-up questions
+            document.querySelectorAll('.followup-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    track('selected_followup_question', { question: this.textContent });
+                    const inputField = document.getElementById('chat-input-field');
+                    if (inputField) {
+                        inputField.value = this.textContent;
+                    }
+                });
+            });
+
+            // Add event listener for chat submit button
+            const chatSubmitBtn = document.getElementById('chat-submit-btn');
+            const chatInputField = document.getElementById('chat-input-field');
+
+            if (chatSubmitBtn) {
+                chatSubmitBtn.addEventListener('click', function () {
+                    track('asked_question_goz');
+                    // Always redirect to external link, even if no text is entered
+                    window.location.href = 'https://gozoom.com/s/e8de83e0-b2fb-4e05-822c-864ebed68a6d?answer=yes&utm_content=answer_yes&scrollToMessage=3';
+                });
             }
         }
 
-        // Move to the previous step
-        function previousStep() {
-            const currentTitle = document.querySelector('h1')?.textContent || '';
-
-            if (currentTitle.includes("What Others Who Agree With You Say")) {
-                loadStep('initial');
-            } else if (currentTitle.includes("")) {
-                loadStep('initial');
-            } else if (currentTitle.includes("Reflecting on Your Choice")) {
-                loadStep('reasonsAgainst');
-            } else if (currentTitle.includes("Complete Perspective")) {
-                loadStep('reflection');
-            } else if (currentTitle.includes("Why You May Be Wrong")) {
-                loadStep('initial');
+        // Go back to previous step
+        function goBack() {
+            if (navigationHistory.length > 1) {
+                navigationHistory.pop(); // Remove current step
+                const previousStep = navigationHistory[navigationHistory.length - 1];
+                currentStep = previousStep;
+                loadStep(previousStep);
+                track('went_back', { from: currentStep, to: previousStep });
             }
         }
     </script>
